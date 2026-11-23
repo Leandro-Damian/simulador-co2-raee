@@ -1,0 +1,426 @@
+{% extends "base.html" %}
+{% block meta %}
+<meta name="author" content="Leandro Damian Chumbita">
+<meta name="description" content="Simulador de lotes y escenarios RAEE con panel visual Chart.js. Autoría: Leandro Damian Chumbita — Técnico Superior en Programación.">
+<meta name="rights" content="Leandro Damian Chumbita — Técnico Superior en Programación">
+{% endblock %}
+{% block title %}Simulador · {{ app_title }}{% endblock %}
+{% block page_title %}Simulador de lotes y escenarios{% endblock %}
+
+{% block content %}
+<section x-data="simulatorPanel()" x-init="load()" class="min-w-0 space-y-6">
+  <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+    <strong>Estimaciones paramétricas.</strong> Los resultados se calculan con los factores editables del
+    <a class="underline" href="/factores">Panel de Factores y Referencias</a>. Se evita la doble contabilidad:
+    cada ítem se cuenta una vez y los componentes de un equipo incluido se excluyen.
+  </div>
+
+  <div x-show="error" x-cloak class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800" x-text="error"></div>
+  <div x-show="message" x-cloak class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800" x-text="message"></div>
+  <div x-show="loading" x-cloak class="text-sm text-slate-500">Cargando escenarios…</div>
+
+  <!-- Escenarios guardados -->
+  <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <h2 class="text-lg font-semibold text-slate-900">Escenarios guardados</h2>
+      <button @click="newScenario()" class="rounded-lg bg-emerald-700 px-3 py-1.5 text-sm font-semibold text-white">+ Nuevo escenario</button>
+    </div>
+    <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <template x-for="scenario in scenarios" :key="scenario.id">
+        <article class="min-w-0 rounded-xl border p-4"
+                 :class="current && current.id === scenario.id ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 bg-slate-50'">
+          <p class="break-words font-semibold text-slate-900" x-text="scenario.name"></p>
+          <p class="text-xs text-slate-500" x-text="scenario.items.length + ' ítems · ' + modeLabel(scenario.default_mode)"></p>
+          <p class="mt-1 break-words text-sm font-bold text-emerald-800"><span x-text="formatNumber(scenario.total_co2_kg)"></span> kg CO₂e</p>
+          <div class="mt-3 flex flex-wrap gap-2 text-xs">
+            <button @click="openScenario(scenario.id)" class="rounded-lg border border-slate-300 bg-white px-2 py-1">Abrir</button>
+            <button @click="duplicateScenario(scenario.id)" class="rounded-lg border border-slate-300 bg-white px-2 py-1">Duplicar</button>
+            <button @click="deleteScenario(scenario.id)" class="rounded-lg border border-red-200 px-2 py-1 text-red-700">Eliminar</button>
+          </div>
+        </article>
+      </template>
+      <p x-show="!scenarios.length" class="text-sm text-slate-500">Todavía no hay escenarios guardados.</p>
+    </div>
+  </section>
+
+  <!-- Editor: x-if (no x-show) evita evaluar bindings mientras current es null -->
+  <template x-if="current">
+  <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <h2 class="text-lg font-semibold text-slate-900" x-text="current && current.id ? 'Editar escenario #' + current.id : 'Nuevo escenario'"></h2>
+    <div class="mt-4 grid gap-3 sm:grid-cols-2">
+      <div class="sm:col-span-2">
+        <label for="scenario-name" class="text-xs font-medium text-slate-600">Nombre del lote / escenario</label>
+        <input id="scenario-name" x-model="current.name" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Lote de recepción — planta norte">
+      </div>
+      <div>
+        <label for="scenario-mode" class="text-xs font-medium text-slate-600">Modo por defecto</label>
+        <select id="scenario-mode" x-model="current.default_mode" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+          <template x-for="mode in options.modes" :key="mode.value"><option :value="mode.value" x-text="mode.label"></option></template>
+        </select>
+      </div>
+      <div>
+        <label for="scenario-notes" class="text-xs font-medium text-slate-600">Notas</label>
+        <input id="scenario-notes" x-model="current.notes" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+      </div>
+    </div>
+
+    <div class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+      <div>
+        <label class="text-xs text-slate-600">Tipo</label>
+        <select x-model="draft.kind" @change="onKindChange()" class="mt-1 w-full rounded-lg border border-slate-300 px-2 py-2 text-sm">
+          <option value="equipment">Equipo</option><option value="component">Componente</option><option value="fraction">Fracción</option>
+        </select>
+      </div>
+      <div class="sm:col-span-2">
+        <label class="text-xs text-slate-600">Elemento</label>
+        <select x-model.number="draft.id" class="mt-1 w-full rounded-lg border border-slate-300 px-2 py-2 text-sm">
+          <template x-for="option in currentOptions" :key="option.id"><option :value="option.id" x-text="option.label"></option></template>
+        </select>
+      </div>
+      <div><label class="text-xs text-slate-600">Cant.</label><input type="number" min="1" x-model.number="draft.quantity" class="mt-1 w-full rounded-lg border border-slate-300 px-2 py-2 text-sm"></div>
+      <div><label class="text-xs text-slate-600">Peso kg/ud.</label><input type="number" min="0" step="any" x-model="draft.weight" placeholder="Auto" class="mt-1 w-full rounded-lg border border-slate-300 px-2 py-2 text-sm"></div>
+      <div>
+        <label class="text-xs text-slate-600">Modo</label>
+        <select x-model="draft.mode" class="mt-1 w-full rounded-lg border border-slate-300 px-2 py-2 text-sm">
+          <template x-for="mode in options.modes" :key="mode.value"><option :value="mode.value" x-text="mode.short || mode.label"></option></template>
+        </select>
+      </div>
+    </div>
+    <div class="mt-3 flex justify-end">
+      <button @click="addItem()" class="rounded-lg border border-emerald-700 px-3 py-1.5 text-sm text-emerald-700">+ Agregar ítem</button>
+    </div>
+
+    <div class="mt-4 overflow-x-auto rounded-xl border border-slate-200">
+      <table class="w-full min-w-[600px] text-left text-sm">
+        <thead class="bg-slate-100 text-xs uppercase text-slate-600">
+          <tr><th class="px-3 py-2">Ítem</th><th class="px-3 py-2">Modo</th><th class="px-3 py-2">Cant.</th><th class="px-3 py-2">Peso kg</th><th class="px-3 py-2"></th></tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <template x-for="(item, index) in (current ? current.items : [])" :key="item.id || ('new-' + index)">
+            <tr>
+              <td class="px-3 py-2"><span class="break-words" x-text="item.entity_label || item.label"></span></td>
+              <td class="px-3 py-2"><select x-model="item.mode" class="rounded border border-slate-300 px-1 py-1 text-xs">
+                <template x-for="mode in options.modes" :key="mode.value"><option :value="mode.value" x-text="mode.short || mode.label"></option></template>
+              </select></td>
+              <td class="px-3 py-2"><input type="number" min="1" x-model.number="item.quantity" class="w-16 rounded border border-slate-300 px-1 py-1 text-xs"></td>
+              <td class="px-3 py-2"><input type="number" min="0" step="any" x-model.number="item.weight_kg" class="w-24 rounded border border-slate-300 px-1 py-1 text-xs"></td>
+              <td class="px-3 py-2"><button @click="current.items.splice(index, 1)" class="text-red-600" aria-label="Quitar ítem">✕</button></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+      <p x-show="!current || !current.items.length" class="px-3 py-3 text-sm text-slate-500">Sin ítems: agregá equipos, componentes sueltos o fracciones por peso.</p>
+    </div>
+
+    <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+      <button @click="saveScenario()" :disabled="saving" class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+        <span x-text="saving ? 'Guardando…' : (current.id ? 'Guardar cambios' : 'Guardar escenario')"></span>
+      </button>
+      <button @click="calculateCurrent()" :disabled="!current.items.length" class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">Calcular y graficar</button>
+      <button @click="newScenario()" class="rounded-lg border border-slate-300 px-4 py-2 text-sm">Descartar / nuevo</button>
+    </div>
+  </section>
+  </template>
+
+  <!-- Panel visual -->
+  <template x-if="result">
+    <div class="min-w-0 space-y-6">
+      <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <article class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+          <p class="text-xs uppercase tracking-wide text-emerald-800">CO₂ evitado total</p>
+          <p class="mt-1 break-words text-3xl font-bold text-emerald-900"><span x-text="formatNumber(result.totals.co2_total)"></span> <span class="text-base">kg CO₂e</span></p>
+          <p class="text-xs text-emerald-800"><span x-text="formatNumber(result.totals.total_weight_kg)"></span> kg procesados</p>
+        </article>
+        <template x-for="card in modeCards" :key="card.key">
+          <article class="rounded-2xl border border-slate-200 bg-white p-5">
+            <p class="text-xs uppercase tracking-wide text-slate-500" x-text="card.label"></p>
+            <p class="mt-1 break-words text-2xl font-bold text-slate-900"><span x-text="formatNumber(result.totals[card.key])"></span> <span class="text-sm">kg CO₂e</span></p>
+          </article>
+        </template>
+      </section>
+
+      <section class="grid gap-4 lg:grid-cols-2">
+        <article class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h3 class="text-base font-semibold text-slate-900">Distribución por modo</h3>
+          <div class="relative mt-3 h-64"><canvas id="chart-modes"></canvas></div>
+        </article>
+        <article class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h3 class="text-base font-semibold text-slate-900">Aporte por ítem / fracción</h3>
+          <div class="relative mt-3 h-64"><canvas id="chart-breakdown"></canvas></div>
+        </article>
+      </section>
+
+      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h3 class="text-base font-semibold text-slate-900">Equivalencias cotidianas</h3>
+        <div class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <template x-for="eq in result.equivalences" :key="eq.label">
+            <article class="min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <p class="text-xs text-slate-500" x-text="eq.label"></p>
+              <p class="mt-1 break-words text-lg font-bold text-slate-900" x-text="eq.display"></p>
+              <p class="mt-2 break-words text-xs text-slate-600" x-text="eq.note || ''"></p>
+            </article>
+          </template>
+        </div>
+      </section>
+
+      <template x-if="result.warnings.length">
+        <section class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <h3 class="font-semibold">Advertencias y criterios aplicados</h3>
+          <ul class="mt-2 list-disc space-y-1 pl-5">
+            <template x-for="(warning, index) in result.warnings" :key="index"><li class="break-words" x-text="warning"></li></template>
+          </ul>
+        </section>
+      </template>
+    </div>
+  </template>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let simCharts = { modes: null, breakdown: null };
+
+  function simulatorPanel() {
+    return {
+      scenarios: [],
+      options: { equipment: [], components: [], fractions: [], modes: [] },
+      current: null,
+      draft: { kind: 'equipment', id: null, quantity: 1, weight: '', mode: 'reuse' },
+      result: null,
+      loading: false,
+      saving: false,
+      error: '',
+      message: '',
+
+      get currentOptions() {
+        const key = { equipment: 'equipment', component: 'components', fraction: 'fractions' }[this.draft.kind];
+        return this.options[key] || [];
+      },
+      get modeCards() {
+        return [
+          { key: 'co2_reuse', label: 'Reutilización / reacondicionamiento' },
+          { key: 'co2_recycling', label: 'Reciclaje / valorización' },
+          { key: 'co2_no_recovery', label: 'Sin recuperación' }
+        ];
+      },
+
+      async request(url, options = {}) {
+        const response = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...options });
+        if (response.status === 204) return null;
+        const text = await response.text();
+        if (!text.trim()) {
+          throw new Error('El servidor devolvió una respuesta vacía (HTTP ' + response.status + ').');
+        }
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch (e) {
+          throw new Error('Respuesta no válida del servidor (HTTP ' + response.status + '): ' + text.slice(0, 120));
+        }
+        if (!response.ok) {
+          const detail = data && data.detail ? data.detail : ('Error HTTP ' + response.status);
+          const message = Array.isArray(detail)
+            ? detail.map(d => d.msg || String(d)).join('; ')
+            : String(detail);
+          throw new Error(message);
+        }
+        return data;
+      },
+
+      async load() {
+        this.loading = true;
+        this.error = '';
+        try {
+          const [scenarios, options] = await Promise.all([
+            this.request('/api/scenarios'),
+            this.request('/api/catalog/options')
+          ]);
+          this.scenarios = scenarios;
+          this.options = options;
+          this.onKindChange();
+          if (scenarios.length) await this.openScenario(scenarios[0].id);
+          else this.newScenario();
+        } catch (e) { this.error = e.message; }
+        finally { this.loading = false; }
+      },
+
+      modeLabel(value) {
+        const mode = this.options.modes.find(m => m.value === value);
+        return mode ? mode.label : value;
+      },
+
+      formatNumber(value) {
+        return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 4 }).format(value || 0);
+      },
+
+      newScenario() {
+        this.current = { id: null, name: '', default_mode: 'reuse', notes: '', items: [] };
+        this.result = null;
+        this.message = '';
+        this.destroyCharts();
+      },
+
+      async openScenario(id) {
+        this.error = '';
+        try {
+          this.current = await this.request('/api/scenarios/' + id);
+          this.result = null;
+          this.destroyCharts();
+        } catch (e) { this.error = e.message; }
+      },
+
+      onKindChange() {
+        const options = this.currentOptions;
+        this.draft.id = options.length ? options[0].id : null;
+        if (this.draft.kind === 'fraction') this.draft.mode = 'recycling';
+      },
+
+      addItem() {
+        if (!this.current || !this.draft.id) return;
+        const option = this.currentOptions.find(o => o.id === this.draft.id);
+        if (!option) return;
+        this.current.items.push({
+          id: null,
+          kind: this.draft.kind,
+          entity_id: this.draft.id,
+          entity_label: option.label,
+          quantity: Number(this.draft.quantity) || 1,
+          weight_kg: this.draft.weight === '' ? null : Number(this.draft.weight),
+          mode: this.draft.mode,
+          attributes: {}
+        });
+      },
+
+      payload() {
+        return {
+          name: this.current.name,
+          default_mode: this.current.default_mode,
+          notes: this.current.notes || '',
+          items: this.current.items.map(item => ({
+            id: item.id || undefined,
+            kind: item.kind,
+            entity_id: item.entity_id,
+            quantity: Number(item.quantity) || 1,
+            weight_kg: item.weight_kg === null || item.weight_kg === undefined || item.weight_kg === '' ? null : Number(item.weight_kg),
+            mode: item.mode || this.current.default_mode,
+            attributes: item.attributes || {}
+          }))
+        };
+      },
+
+      // /api/calculate usa "id" para la entidad del catálogo, mientras que
+      // /api/scenarios usa "entity_id". No mezclar ambos formatos.
+      calculationItems() {
+        return this.current.items.map(item => ({
+          kind: item.kind,
+          id: item.entity_id,
+          quantity: Number(item.quantity) || 1,
+          weight_kg: item.weight_kg === null || item.weight_kg === undefined || item.weight_kg === '' ? null : Number(item.weight_kg),
+          mode: item.mode || this.current.default_mode,
+          attributes: item.attributes || {}
+        }));
+      },
+
+      async saveScenario() {
+        if (!this.current.name.trim()) { this.error = 'Ingrese un nombre para el escenario.'; return; }
+        this.saving = true;
+        this.error = '';
+        try {
+          const isNew = !this.current.id;
+          const saved = await this.request(isNew ? '/api/scenarios' : '/api/scenarios/' + this.current.id, {
+            method: isNew ? 'POST' : 'PUT',
+            body: JSON.stringify(this.payload())
+          });
+          this.current = saved;
+          this.message = 'Escenario guardado correctamente.';
+          await this.load();
+          await this.openScenario(saved.id);
+        } catch (e) { this.error = e.message; }
+        finally { this.saving = false; }
+      },
+
+      async duplicateScenario(id) {
+        try {
+          const copy = await this.request('/api/scenarios/' + id + '/duplicate', { method: 'POST' });
+          this.message = 'Escenario duplicado.';
+          await this.load();
+          await this.openScenario(copy.id);
+        } catch (e) { this.error = e.message; }
+      },
+
+      async deleteScenario(id) {
+        if (!confirm('¿Eliminar este escenario guardado?')) return;
+        try {
+          await this.request('/api/scenarios/' + id, { method: 'DELETE' });
+          this.message = 'Escenario eliminado.';
+          if (this.current && this.current.id === id) this.newScenario();
+          await this.load();
+        } catch (e) { this.error = e.message; }
+      },
+
+      async calculateCurrent() {
+        this.error = '';
+        try {
+          if (this.current.id) {
+            this.result = await this.request('/api/scenarios/' + this.current.id + '/calculate', { method: 'POST' });
+          } else {
+            this.result = await this.request('/api/calculate', {
+              method: 'POST',
+              body: JSON.stringify({ items: this.calculationItems() })
+            });
+          }
+          await this.$nextTick();
+          this.renderCharts();
+        } catch (e) { this.error = e.message; }
+      },
+
+      destroyCharts() {
+        if (simCharts.modes) { simCharts.modes.destroy(); simCharts.modes = null; }
+        if (simCharts.breakdown) { simCharts.breakdown.destroy(); simCharts.breakdown = null; }
+      },
+
+      renderCharts() {
+        if (!this.result || typeof Chart === 'undefined') return;
+        this.destroyCharts();
+        const totals = this.result.totals;
+        const modesCanvas = document.getElementById('chart-modes');
+        const breakdownCanvas = document.getElementById('chart-breakdown');
+        if (!modesCanvas || !breakdownCanvas) return;
+
+        simCharts.modes = new Chart(modesCanvas, {
+          type: 'doughnut',
+          data: {
+            labels: ['Reutilización', 'Reciclaje', 'Sin recuperación'],
+            datasets: [{
+              data: [totals.co2_reuse, totals.co2_recycling, totals.co2_no_recovery],
+              backgroundColor: ['#047857', '#0ea5e9', '#94a3b8'],
+              borderWidth: 1
+            }]
+          },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        });
+
+        const grouped = {};
+        for (const line of this.result.lines) {
+          if (line.excluded_reason) continue;
+          grouped[line.label] = (grouped[line.label] || 0) + line.co2_kg;
+        }
+        const labels = Object.keys(grouped);
+        const values = labels.map(label => grouped[label]);
+        simCharts.breakdown = new Chart(breakdownCanvas, {
+          type: 'bar',
+          data: {
+            labels: labels.length ? labels : ['Sin datos'],
+            datasets: [{ label: 'kg CO₂e', data: values.length ? values : [0], backgroundColor: '#0f766e', borderRadius: 4 }]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 } } }
+          }
+        });
+      }
+    };
+  }
+</script>
+{% endblock %}

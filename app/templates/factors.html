@@ -1,0 +1,356 @@
+{% extends "base.html" %}
+{% block meta %}
+<meta name="author" content="Leandro Damian Chumbita">
+<meta name="description" content="Panel de Factores y Referencias del Simulador de CO₂ Evitado RAEE. Autoría: Leandro Damian Chumbita — Técnico Superior en Programación.">
+<meta name="rights" content="Leandro Damian Chumbita — Técnico Superior en Programación">
+{% endblock %}
+{% block title %}Panel de Factores · {{ app_title }}{% endblock %}
+{% block page_title %}Panel de Factores y Referencias{% endblock %}
+
+{% block content %}
+<section x-data="factorsPanel()" x-init="load()" class="min-w-0 space-y-6">
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <p class="max-w-2xl text-sm leading-relaxed text-slate-600">
+      <strong>Estimación paramétrica.</strong> Todos los valores son
+      <strong class="text-slate-800">estimaciones paramétricas</strong>.
+      Editá el valor, la unidad, el modo, la fuente y la nota; los cambios impactan
+      de inmediato en el motor de cálculo y en las equivalencias.
+    </p>
+    <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+      <label class="sr-only" for="filter-mode">Filtrar por modo</label>
+      <select id="filter-mode" x-model="filter"
+              class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm sm:w-56">
+        <option value="">Todos los modos</option>
+        <template x-for="mode in modes" :key="mode.value">
+          <option :value="mode.value" x-text="mode.label"></option>
+        </template>
+      </select>
+      <button type="button" @click="newFactor()"
+              class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800">
+        + Nuevo factor
+      </button>
+    </div>
+  </div>
+
+  <div x-show="error" x-cloak class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+    <span x-text="error"></span>
+  </div>
+  <div x-show="message" x-cloak class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+    <span x-text="message"></span>
+  </div>
+  <div x-show="loading" x-cloak class="text-sm text-slate-500">Cargando factores…</div>
+
+  <!-- Tabla de escritorio -->
+  <div class="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm md:block">
+    <table class="w-full table-fixed border-collapse text-left text-sm">
+      <thead class="bg-slate-100 text-xs uppercase tracking-wide text-slate-600">
+        <tr>
+          <th class="w-[26%] px-3 py-3">Factor</th>
+          <th class="w-[9%] px-3 py-3">Valor</th>
+          <th class="w-[12%] px-3 py-3">Unidad</th>
+          <th class="w-[13%] px-3 py-3">Modo</th>
+          <th class="w-[18%] px-3 py-3">Fuente</th>
+          <th class="w-[14%] px-3 py-3">Estado</th>
+          <th class="w-[8%] px-3 py-3 text-right">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        <template x-for="factor in filteredFactors" :key="factor.id">
+          <tr class="align-top hover:bg-slate-50">
+            <td class="px-3 py-3">
+              <p class="truncate font-medium text-slate-900" :title="factor.label" x-text="factor.label"></p>
+              <p class="truncate text-xs text-slate-500" x-text="factor.key"></p>
+              <p class="mt-1 line-clamp-2 text-xs text-slate-500" :title="factor.note || ''" x-text="factor.note || 'Sin nota'"></p>
+            </td>
+            <td class="px-3 py-3 font-semibold text-emerald-800" x-text="formatNumber(factor.value)"></td>
+            <td class="break-words px-3 py-3 text-xs text-slate-600" x-text="factor.unit"></td>
+            <td class="px-3 py-3"><span class="rounded-full bg-slate-100 px-2 py-1 text-xs" x-text="modeLabel(factor.mode)"></span></td>
+            <td class="px-3 py-3 text-xs text-slate-600"><span class="line-clamp-3" :title="factor.source || ''" x-text="factor.source || '—'"></span></td>
+            <td class="px-3 py-3">
+              <span class="rounded-full px-2 py-1 text-xs font-medium"
+                    :class="factor.active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'"
+                    x-text="factor.active ? 'Activo' : 'Inactivo'"></span>
+            </td>
+            <td class="px-3 py-3">
+              <div class="flex justify-end gap-1">
+                <button type="button" @click="editFactor(factor)" class="rounded p-1 text-slate-600 hover:bg-slate-200" aria-label="Editar factor">✎</button>
+                <button type="button" @click="deactivate(factor)" x-show="factor.active" class="rounded p-1 text-red-600 hover:bg-red-50" aria-label="Desactivar factor">✕</button>
+                <button type="button" @click="activate(factor)" x-show="!factor.active" class="rounded p-1 text-emerald-700 hover:bg-emerald-50" aria-label="Reactivar factor">↺</button>
+              </div>
+            </td>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Tarjetas en celular -->
+  <div class="grid min-w-0 gap-3 md:hidden">
+    <template x-for="factor in filteredFactors" :key="factor.id">
+      <article class="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div class="flex items-start justify-between gap-2">
+          <div class="min-w-0">
+            <p class="break-words font-semibold text-slate-900" x-text="factor.label"></p>
+            <p class="break-all text-xs text-slate-500" x-text="factor.key"></p>
+          </div>
+          <span class="shrink-0 rounded-full px-2 py-1 text-xs"
+                :class="factor.active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'"
+                x-text="factor.active ? 'Activo' : 'Inactivo'"></span>
+        </div>
+        <div class="mt-3 grid grid-cols-2 gap-2 text-sm">
+          <div><span class="text-xs text-slate-500">Valor</span><p class="font-semibold text-emerald-800" x-text="formatNumber(factor.value)"></p></div>
+          <div><span class="text-xs text-slate-500">Modo</span><p class="break-words text-xs" x-text="modeLabel(factor.mode)"></p></div>
+          <div class="col-span-2"><span class="text-xs text-slate-500">Unidad</span><p class="break-words text-xs" x-text="factor.unit"></p></div>
+          <div class="col-span-2"><span class="text-xs text-slate-500">Fuente</span><p class="break-words text-xs" x-text="factor.source || '—'"></p></div>
+          <div class="col-span-2"><span class="text-xs text-slate-500">Nota</span><p class="break-words text-xs" x-text="factor.note || '—'"></p></div>
+        </div>
+        <div class="mt-3 flex gap-2">
+          <button type="button" @click="editFactor(factor)" class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm">Editar</button>
+          <button type="button" @click="deactivate(factor)" x-show="factor.active" class="rounded-lg border border-red-200 px-3 py-2 text-sm text-red-700">Desactivar</button>
+          <button type="button" @click="activate(factor)" x-show="!factor.active" class="rounded-lg border border-emerald-200 px-3 py-2 text-sm text-emerald-700">Reactivar</button>
+        </div>
+      </article>
+    </template>
+  </div>
+
+  <!-- Equivalencias -->
+  <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <h2 class="text-lg font-semibold text-slate-900">Equivalencias cotidianas</h2>
+    <p class="mt-1 text-xs text-slate-500">Se escalan según el total de kg CO₂e del escenario. El factor se expresa por kg evitado.</p>
+    <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <template x-for="equivalence in equivalences" :key="equivalence.id">
+        <article class="min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <p class="break-words text-sm font-semibold text-slate-900" x-text="equivalence.label"></p>
+          <label class="mt-3 block text-xs text-slate-500" :for="'eq-' + equivalence.id">Factor por kg CO₂e</label>
+          <div class="mt-1 flex gap-2">
+            <input :id="'eq-' + equivalence.id" type="number" step="any" min="0" x-model.number="equivalence._value"
+                   class="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-2 py-1 text-sm">
+            <button type="button" @click="saveEquivalence(equivalence)"
+                    class="rounded-lg bg-slate-800 px-3 py-1 text-sm font-medium text-white hover:bg-slate-900">Guardar</button>
+          </div>
+          <p class="mt-1 break-words text-xs text-slate-500" x-text="equivalence.unit"></p>
+          <p class="mt-2 break-words text-xs text-slate-600" x-text="equivalence.note || 'Sin nota'"></p>
+        </article>
+      </template>
+    </div>
+  </section>
+
+  <!-- Modal de edición -->
+  <div x-show="editing" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 p-4"
+       x-on:click.self="editing = false">
+    <div class="mx-auto my-4 w-full max-w-xl rounded-2xl bg-white p-5 shadow-xl sm:my-10" role="dialog" aria-modal="true">
+      <div class="flex items-start justify-between gap-3">
+        <h2 class="text-lg font-semibold text-slate-900" x-text="form.id ? 'Editar factor' : 'Nuevo factor'"></h2>
+        <button type="button" @click="editing = false" class="rounded p-1 text-slate-500 hover:bg-slate-100" aria-label="Cerrar">✕</button>
+      </div>
+      <form class="mt-4 grid gap-3" @submit.prevent="saveFactor()">
+        <div>
+          <label for="f-key" class="block text-xs font-medium text-slate-600">Clave normalizada</label>
+          <input id="f-key" type="text" x-model="form.key" :disabled="!!form.id"
+                 class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-100"
+                 placeholder="factor_personalizado" required pattern="[a-z0-9_]+">
+        </div>
+        <div>
+          <label for="f-label" class="block text-xs font-medium text-slate-600">Etiqueta</label>
+          <input id="f-label" type="text" x-model="form.label" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" required>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label for="f-value" class="block text-xs font-medium text-slate-600">Valor</label>
+            <input id="f-value" type="number" step="any" x-model.number="form.value" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" required>
+          </div>
+          <div>
+            <label for="f-unit" class="block text-xs font-medium text-slate-600">Unidad</label>
+            <input id="f-unit" type="text" x-model="form.unit" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" required>
+          </div>
+        </div>
+        <div>
+          <label for="f-mode" class="block text-xs font-medium text-slate-600">Modo</label>
+          <select id="f-mode" x-model="form.mode" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+            <template x-for="mode in modes" :key="mode.value">
+              <option :value="mode.value" x-text="mode.label"></option>
+            </template>
+          </select>
+        </div>
+        <div>
+          <label for="f-source" class="block text-xs font-medium text-slate-600">Fuente / referencia</label>
+          <input id="f-source" type="text" x-model="form.source" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label for="f-note" class="block text-xs font-medium text-slate-600">Nota</label>
+          <textarea id="f-note" rows="3" x-model="form.note" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"></textarea>
+        </div>
+        <label class="flex items-center gap-2 text-sm text-slate-700">
+          <input type="checkbox" x-model="form.active" class="h-4 w-4 rounded border-slate-300">
+          Factor activo
+        </label>
+        <div class="mt-2 flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <button type="button" @click="editing = false" class="rounded-lg border border-slate-300 px-4 py-2 text-sm">Cancelar</button>
+          <button type="submit" :disabled="saving"
+                  class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50">
+            <span x-text="saving ? 'Guardando…' : 'Guardar'"></span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function factorsPanel() {
+    return {
+      factors: [],
+      equivalences: [],
+      filter: '',
+      modes: [
+        { value: 'reuse', label: 'Reutilización / reacondicionamiento' },
+        { value: 'recycling', label: 'Reciclaje / valorización' },
+        { value: 'no_recovery', label: 'Sin recuperación' },
+        { value: 'material', label: 'Material / fracción' },
+        { value: 'equivalence', label: 'Equivalencia' },
+        { value: 'all', label: 'General' }
+      ],
+      loading: false,
+      saving: false,
+      error: '',
+      message: '',
+      editing: false,
+      form: {},
+
+      get filteredFactors() {
+        return this.filter ? this.factors.filter(f => f.mode === this.filter) : this.factors;
+      },
+
+      async request(url, options = {}) {
+        const response = await fetch(url, {
+          headers: { 'Content-Type': 'application/json' },
+          ...options
+        });
+        if (response.status === 204) return null;
+        const text = await response.text();
+        if (!text.trim()) {
+          throw new Error('El servidor devolvió una respuesta vacía (HTTP ' + response.status + ').');
+        }
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch (e) {
+          throw new Error('Respuesta no válida del servidor (HTTP ' + response.status + '): ' + text.slice(0, 120));
+        }
+        if (!response.ok) {
+          const detail = data && data.detail ? data.detail : ('Error HTTP ' + response.status);
+          const message = Array.isArray(detail)
+            ? detail.map(d => d.msg || String(d)).join('; ')
+            : String(detail);
+          throw new Error(message);
+        }
+        return data;
+      },
+
+      async load() {
+        this.loading = true;
+        this.error = '';
+        try {
+          const [factors, equivalences] = await Promise.all([
+            this.request('/api/factors'),
+            this.request('/api/equivalences')
+          ]);
+          this.factors = factors;
+          this.equivalences = equivalences.map(e => ({ ...e, _value: e.value }));
+        } catch (e) {
+          this.error = e.message;
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      modeLabel(mode) {
+        const found = this.modes.find(m => m.value === mode);
+        return found ? found.label : mode;
+      },
+
+      formatNumber(value) {
+        return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 6 }).format(value);
+      },
+
+      newFactor() {
+        this.form = { id: null, key: '', label: '', value: 1, unit: 'kg CO₂e/kg', mode: 'reuse', source: '', note: '', active: true };
+        this.message = '';
+        this.editing = true;
+      },
+
+      editFactor(factor) {
+        this.form = { ...factor };
+        this.message = '';
+        this.editing = true;
+      },
+
+      async saveFactor() {
+        this.saving = true;
+        this.error = '';
+        try {
+          const body = {
+            key: String(this.form.key || '').trim(),
+            label: this.form.label,
+            value: Number(this.form.value),
+            unit: this.form.unit,
+            mode: this.form.mode,
+            source: this.form.source || '',
+            note: this.form.note || '',
+            active: !!this.form.active
+          };
+          if (this.form.id) {
+            await this.request('/api/factors/' + this.form.id, { method: 'PUT', body: JSON.stringify(body) });
+          } else {
+            await this.request('/api/factors', { method: 'POST', body: JSON.stringify(body) });
+          }
+          this.editing = false;
+          this.message = 'Factor guardado correctamente.';
+          await this.load();
+        } catch (e) {
+          this.error = e.message;
+        } finally {
+          this.saving = false;
+        }
+      },
+
+      async deactivate(factor) {
+        if (!confirm('¿Desactivar el factor "' + factor.label + '"? No se borrará su historial.')) return;
+        try {
+          await this.request('/api/factors/' + factor.id, { method: 'DELETE' });
+          this.message = 'Factor desactivado.';
+          await this.load();
+        } catch (e) {
+          this.error = e.message;
+        }
+      },
+
+      async activate(factor) {
+        try {
+          await this.request('/api/factors/' + factor.id + '/activate', { method: 'POST' });
+          this.message = 'Factor reactivado.';
+          await this.load();
+        } catch (e) {
+          this.error = e.message;
+        }
+      },
+
+      async saveEquivalence(equivalence) {
+        this.error = '';
+        try {
+          await this.request('/api/equivalences/' + equivalence.id, {
+            method: 'PUT',
+            body: JSON.stringify({ value: Number(equivalence._value), note: equivalence.note })
+          });
+          this.message = 'Equivalencia actualizada.';
+          await this.load();
+        } catch (e) {
+          this.error = e.message;
+        }
+      }
+    };
+  }
+</script>
+{% endblock %}

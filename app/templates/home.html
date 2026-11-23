@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% block meta %}
+<meta name="author" content="Leandro Damian Chumbita">
+<meta name="description" content="Portada del Simulador de CO₂ Evitado RAEE de {{ org_name }}: estimaciones paramétricas de reutilización, reacondicionamiento y reciclaje. Autoría: Leandro Damian Chumbita — Técnico Superior en Programación.">
+<meta name="rights" content="Leandro Damian Chumbita — Técnico Superior en Programación">
+{% endblock %}
+{% block title %}Inicio · {{ app_title }}{% endblock %}
+{% block page_title %}Inicio{% endblock %}
+
+{% block head %}
+<style>
+  .home-card {
+    transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease, background-color .22s ease;
+  }
+  .home-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 14px 30px -18px rgb(15 118 110 / .45);
+    border-color: rgb(110 231 183);
+  }
+  .home-action {
+    transition: transform .18s ease, background-color .18s ease, color .18s ease, border-color .18s ease, box-shadow .18s ease;
+  }
+  .home-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px -12px rgb(4 120 87 / .55);
+  }
+  .home-action:active { transform: translateY(0); }
+  .home-action:focus-visible,
+  .home-card:focus-within { outline: 2px solid #059669; outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) {
+    .home-card, .home-action { transition: none !important; }
+    .home-card:hover, .home-action:hover, .home-action:active { transform: none !important; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-w-0 space-y-10 sm:space-y-12">
+  <!-- Encabezado / Hero -->
+  <section class="min-w-0 rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-emerald-50 p-6 shadow-sm sm:p-10">
+    <div class="min-w-0 max-w-3xl">
+      <p class="inline-flex max-w-full items-center rounded-full border border-emerald-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-800 sm:text-xs">
+        <span class="break-words">{{ org_name }} · Estimación paramétrica</span>
+      </p>
+      <h2 class="mt-5 break-words text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
+        Simulador de CO₂ Evitado RAEE
+      </h2>
+      <p class="mt-4 max-w-2xl break-words text-sm leading-relaxed text-slate-600 sm:text-base lg:text-lg">
+        Aplicación web local para estimar el CO₂e evitado mediante reutilización,
+        reacondicionamiento y reciclaje de equipos, componentes sueltos y fracciones
+        de aparatos eléctricos y electrónicos.
+      </p>
+
+      <div class="mt-7 flex flex-wrap gap-3">
+        <a href="/simulador" class="home-action inline-flex items-center justify-center rounded-xl bg-emerald-700 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-emerald-800 sm:text-base">
+          Ir al Simulador
+        </a>
+        <a href="/calculadora" class="home-action inline-flex items-center justify-center rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm font-semibold text-emerald-800 hover:border-emerald-400 hover:bg-emerald-50 sm:text-base">
+          Calculadora rápida
+        </a>
+        <a href="/manual" class="home-action inline-flex items-center justify-center rounded-xl px-3 py-3 text-sm font-semibold text-slate-600 underline decoration-slate-300 underline-offset-4 hover:text-emerald-800 hover:decoration-emerald-500 sm:text-base">
+          Ver Manual
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ¿De qué trata la aplicación? -->
+  <section class="min-w-0 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+    <div class="min-w-0 max-w-3xl">
+      <h2 class="break-words text-xl font-bold text-slate-900 sm:text-2xl">¿De qué trata la aplicación?</h2>
+      <p class="mt-3 break-words text-sm leading-relaxed text-slate-600 sm:text-base">
+        Convierte los datos de recepción en estimaciones comparables, con reglas claras
+        para no contar dos veces lo mismo y para comunicar el resultado de forma sencilla.
+      </p>
+    </div>
+
+    <div class="mt-6 grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <article class="home-card min-w-0 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <span aria-hidden="true" class="block h-2 w-2 rounded-full bg-emerald-600"></span>
+        <h3 class="mt-2 break-words text-sm font-semibold text-slate-900 sm:text-base">Estimar lotes o equipos puntuales</h3>
+        <p class="mt-1 break-words text-sm leading-relaxed text-slate-600">
+          Calculá CO₂e evitado para un equipo suelto o un lote completo, considerando su
+          lista de materiales (BOM) cuando corresponde.
+        </p>
+      </article>
+      <article class="home-card min-w-0 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <span aria-hidden="true" class="block h-2 w-2 rounded-full bg-emerald-600"></span>
+        <h3 class="mt-2 break-words text-sm font-semibold text-slate-900 sm:text-base">Comparar destinos</h3>
+        <p class="mt-1 break-words text-sm leading-relaxed text-slate-600">
+          Contrastá reutilización / reacondicionamiento con reciclaje / valorización y
+          el destino sin recuperación.
+        </p>
+      </article>
+      <article class="home-card min-w-0 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <span aria-hidden="true" class="block h-2 w-2 rounded-full bg-emerald-600"></span>
+        <h3 class="mt-2 break-words text-sm font-semibold text-slate-900 sm:text-base">Evitar doble contabilización</h3>
+        <p class="mt-1 break-words text-sm leading-relaxed text-slate-600">
+          Las piezas ya incluidas en un equipo se excluyen automáticamente cuando ese
+          equipo también está en el cálculo.
+        </p>
+      </article>
+      <article class="home-card min-w-0 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <span aria-hidden="true" class="block h-2 w-2 rounded-full bg-emerald-600"></span>
+        <h3 class="mt-2 break-words text-sm font-semibold text-slate-900 sm:text-base">Traducir el resultado</h3>
+        <p class="mt-1 break-words text-sm leading-relaxed text-slate-600">
+          Cada total se convierte a equivalencias cotidianas para comunicarlo con
+          claridad ante clientes o en planta.
+        </p>
+      </article>
+    </div>
+  </section>
+
+  <!-- CO₂ evitado y reducción de emisiones -->
+  <section class="min-w-0 rounded-3xl border border-emerald-100 bg-white p-5 shadow-sm sm:p-7">
+    <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-center lg:gap-10">
+      <div class="min-w-0">
+        <h2 class="break-words text-xl font-bold text-slate-900 sm:text-2xl">
+          Estimación de CO₂ evitado y reducción de emisiones
+        </h2>
+        <p class="mt-3 break-words text-sm leading-relaxed text-slate-600 sm:text-base">
+          Cada kilógramo de CO₂e evitado se obtiene de aplicar factores editables al peso
+          de los materiales recuperados o al peso de los equipos reacondicionados. El
+          resultado se expresa en kg CO₂e y se complementa con equivalencias para hacerlo
+          comprensible: kilómetros en auto, cargas de teléfono o absorción de árboles.
+        </p>
+        <p class="mt-3 break-words text-sm leading-relaxed text-slate-600 sm:text-base">
+          Así, una misma recepción puede mostrarse como cifra técnica y como impacto
+          cotidiano, manteniendo siempre la trazabilidad del factor utilizado.
+        </p>
+        <a href="/factores" class="home-action mt-5 inline-flex items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-800 hover:border-emerald-400 hover:bg-emerald-100">
+          Revisar factores y equivalencias
+        </a>
+      </div>
+      <div class="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+        <img src="/co2-home.jpg"
+             alt="Paisaje natural vinculado a la reducción de emisiones de CO₂."
+             width="736" height="488"
+             class="block h-48 w-full object-cover sm:h-64 lg:h-80">
+      </div>
+    </div>
+  </section>
+
+  <!-- Aviso visible -->
+  <section class="min-w-0 rounded-3xl border border-amber-200 bg-amber-50 p-5 sm:p-6">
+    <div class="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start">
+      <span aria-hidden="true" class="shrink-0 text-2xl leading-none text-amber-600">!</span>
+      <div class="min-w-0">
+        <h2 class="break-words text-sm font-bold text-amber-900 sm:text-base">Aviso de estimación paramétrica</h2>
+        <p class="mt-1 break-words text-sm leading-relaxed text-amber-900 sm:text-base">
+          Todas las cifras son estimaciones paramétricas basadas en factores editables:
+          orientan decisiones, sin constituir un inventario oficial de emisiones.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ¿Cómo recorrer la aplicación? -->
+  <section class="min-w-0 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+    <h2 class="break-words text-xl font-bold text-slate-900 sm:text-2xl">¿Cómo recorrer la aplicación?</h2>
+
+    <div class="mt-5 grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <article class="home-card min-w-0 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <h3 class="break-words text-sm font-semibold text-slate-900 sm:text-base">
+          <a href="/factores" class="underline decoration-emerald-300 underline-offset-4 hover:text-emerald-800">Factores</a>
+        </h3>
+        <p class="mt-1 break-words text-sm leading-relaxed text-slate-600">
+          Revisá o ajustá los factores paramétricos y las equivalencias vigentes.
+        </p>
+      </article>
+      <article class="home-card min-w-0 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <h3 class="break-words text-sm font-semibold text-slate-900 sm:text-base">
+          <a href="/catalogo" class="underline decoration-emerald-300 underline-offset-4 hover:text-emerald-800">Catálogo</a>
+        </h3>
+        <p class="mt-1 break-words text-sm leading-relaxed text-slate-600">
+          Consultá o cargá equipos, BOM, componentes sueltos, atributos y fracciones, con altas y bajas lógicas.
+        </p>
+      </article>
+      <article class="home-card min-w-0 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <h3 class="break-words text-sm font-semibold text-slate-900 sm:text-base">
+          <a href="/calculadora" class="underline decoration-emerald-300 underline-offset-4 hover:text-emerald-800">Calculadora</a>
+        </h3>
+        <p class="mt-1 break-words text-sm leading-relaxed text-slate-600">
+          Hacé estimaciones rápidas al vuelo, sin guardar escenarios.
+        </p>
+      </article>
+      <article class="home-card min-w-0 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <h3 class="break-words text-sm font-semibold text-slate-900 sm:text-base">
+          <a href="/simulador" class="underline decoration-emerald-300 underline-offset-4 hover:text-emerald-800">Simulador</a>
+          y <a href="/manual" class="underline decoration-emerald-300 underline-offset-4 hover:text-emerald-800">Manual</a>
+        </h3>
+        <p class="mt-1 break-words text-sm leading-relaxed text-slate-600">
+          Armá lotes comparables, mirá los gráficos, guardá escenarios históricos o consultá la guía para recorridos en planta y presentaciones.
+        </p>
+      </article>
+    </div>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+{% block meta %}
+<meta name="author" content="Leandro Damian Chumbita">
+<meta name="description" content="Calculadora rápida de CO₂ evitado: estimaciones paramétricas por equipo, componente o fracción. Autoría: Leandro Damian Chumbita — Técnico Superior en Programación.">
+<meta name="rights" content="Leandro Damian Chumbita — Técnico Superior en Programación">
+{% endblock %}
+{% block title %}Calculadora · {{ app_title }}{% endblock %}
+{% block page_title %}Calculadora rápida de CO₂ evitado{% endblock %}
+
+{% block content %}
+<section x-data="calculatorPanel()" x-init="load()" class="min-w-0 space-y-6">
+  <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+    <strong>Estimación paramétrica.</strong> Los resultados se calculan con los factores editables del
+    <a class="underline" href="/factores">Panel de Factores y Referencias</a>. No constituyen un inventario oficial de emisiones.
+  </div>
+
+  <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <h2 class="text-lg font-semibold text-slate-900">1. Cargar ítems</h2>
+    <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+      <div>
+        <label for="kind" class="block text-xs font-medium text-slate-600">Tipo</label>
+        <select id="kind" x-model="draft.kind" @change="onKindChange()" class="mt-1 w-full rounded-lg border border-slate-300 px-2 py-2 text-sm">
+          <option value="equipment">Equipo</option>
+          <option value="component">Componente</option>
+          <option value="fraction">Fracción por peso</option>
+        </select>
+      </div>
+      <div class="sm:col-span-2">
+        <label for="entity" class="block text-xs font-medium text-slate-600">Elemento</label>
+        <select id="entity" x-model.number="draft.id" class="mt-1 w-full rounded-lg border border-slate-300 px-2 py-2 text-sm">
+          <template x-for="option in currentOptions" :key="option.id">
+            <option :value="option.id" x-text="option.label"></option>
+          </template>
+        </select>
+      </div>
+      <div>
+        <label for="quantity" class="block text-xs font-medium text-slate-600">Cantidad</label>
+        <input id="quantity" type="number" min="1" x-model.number="draft.quantity" class="mt-1 w-full rounded-lg border border-slate-300 px-2 py-2 text-sm">
+      </div>
+      <div>
+        <label for="weight" class="block text-xs font-medium text-slate-600">Peso kg / ud.</label>
+        <input id="weight" type="number" min="0" step="any" x-model="draft.weight" placeholder="Automático" class="mt-1 w-full rounded-lg border border-slate-300 px-2 py-2 text-sm">
+      </div>
+      <div>
+        <label for="mode" class="block text-xs font-medium text-slate-600">Modo</label>
+        <select id="mode" x-model="draft.mode" class="mt-1 w-full rounded-lg border border-slate-300 px-2 py-2 text-sm">
+          <template x-for="mode in modes" :key="mode.value">
+            <option :value="mode.value" x-text="mode.short"></option>
+          </template>
+        </select>
+      </div>
+    </div>
+    <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <p class="text-xs text-slate-500">Dejá el peso vacío para usar el peso por defecto del equipo o componente.</p>
+      <button type="button" @click="addItem()"
+              class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800">+ Agregar a la lista</button>
+    </div>
+
+    <div class="mt-4 overflow-hidden rounded-xl border border-slate-200">
+      <div class="hidden grid-cols-[minmax(0,1fr)_9rem_6rem_10rem_3rem] gap-2 bg-slate-100 px-3 py-2 text-xs font-semibold uppercase text-slate-600 sm:grid">
+        <span>Elemento</span><span>Modo</span><span>Cant.</span><span>Peso kg/ud.</span><span></span>
+      </div>
+      <template x-if="items.length === 0">
+        <p class="px-3 py-4 text-sm text-slate-500">Todavía no agregaste ítems.</p>
+      </template>
+      <template x-for="(item, index) in items" :key="index">
+        <div class="grid grid-cols-1 gap-2 border-t border-slate-100 px-3 py-3 text-sm first:border-t-0 sm:grid-cols-[minmax(0,1fr)_9rem_6rem_10rem_3rem] sm:items-center">
+          <span class="min-w-0 break-words font-medium text-slate-800" x-text="item.label"></span>
+          <span class="break-words text-xs text-slate-600" x-text="modeShort(item.mode)"></span>
+          <span class="text-slate-700" x-text="item.quantity"></span>
+          <span class="text-slate-700" x-text="item.weight === null ? 'Automático' : item.weight"></span>
+          <button type="button" @click="items.splice(index, 1)" class="justify-self-start rounded p-1 text-red-600 hover:bg-red-50 sm:justify-self-end" aria-label="Quitar ítem">✕</button>
+        </div>
+      </template>
+    </div>
+
+    <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <p class="text-xs" :class="items.length ? 'text-slate-500' : 'text-slate-400'">Los ítems se cuentan una sola vez; se evita duplicar componentes de equipos incluidos.</p>
+      <button type="button" @click="calculatePreview()" :disabled="!items.length || calculating"
+              class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-40">
+        <span x-text="calculating ? 'Calculando…' : 'Calcular estimación'"></span>
+      </button>
+    </div>
+  </div>
+
+  <div x-show="error" x-cloak class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+    <span x-text="error"></span>
+  </div>
+
+  <template x-if="result">
+    <div class="min-w-0 space-y-6">
+      <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <article class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+          <p class="text-xs font-semibold uppercase tracking-wide text-emerald-800">CO₂ evitado total</p>
+          <p class="mt-1 break-words text-3xl font-bold text-emerald-900"><span x-text="formatNumber(result.totals.co2_total)"></span> <span class="text-base font-medium">kg CO₂e</span></p>
+          <p class="mt-1 text-xs text-emerald-800">Peso procesado: <span x-text="formatNumber(result.totals.total_weight_kg)"></span> kg</p>
+        </article>
+        <template x-for="card in modeCards" :key="card.key">
+          <article class="rounded-2xl border border-slate-200 bg-white p-5">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500" x-text="card.label"></p>
+            <p class="mt-1 break-words text-2xl font-bold text-slate-900"><span x-text="formatNumber(result.totals[card.key])"></span> <span class="text-sm font-medium">kg CO₂e</span></p>
+          </article>
+        </template>
+      </section>
+
+      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 class="text-lg font-semibold text-slate-900">2. Equivalencias cotidianas</h2>
+        <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <template x-for="eq in result.equivalences" :key="eq.label">
+            <article class="min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <p class="text-xs font-medium text-slate-500" x-text="eq.label"></p>
+              <p class="mt-1 break-words text-lg font-bold text-slate-900" x-text="eq.display"></p>
+              <p class="mt-2 break-words text-xs text-slate-600" x-text="eq.note || ''"></p>
+            </article>
+          </template>
+        </div>
+      </section>
+
+      <template x-if="result.warnings.length">
+        <section class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <h2 class="font-semibold">Advertencias y criterios aplicados</h2>
+          <ul class="mt-2 list-disc space-y-1 pl-5">
+            <template x-for="(warning, index) in result.warnings" :key="index">
+              <li class="break-words" x-text="warning"></li>
+            </template>
+          </ul>
+        </section>
+      </template>
+
+      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 class="text-lg font-semibold text-slate-900">Desglose por ítem</h2>
+        <div class="mt-4 overflow-x-auto">
+          <table class="w-full min-w-[640px] border-collapse text-left text-sm">
+            <thead class="bg-slate-100 text-xs uppercase text-slate-600">
+              <tr><th class="px-3 py-2">Ítem</th><th class="px-3 py-2">Modo</th><th class="px-3 py-2">Peso kg</th><th class="px-3 py-2">Factor</th><th class="px-3 py-2">kg CO₂e</th></tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <template x-for="(line, index) in result.lines" :key="index">
+                <tr :class="line.excluded_reason ? 'opacity-50' : ''">
+                  <td class="px-3 py-2">
+                    <p class="break-words font-medium text-slate-800" x-text="line.label"></p>
+                    <p class="break-all text-xs text-slate-500" x-text="line.factor_key"></p>
+                    <p x-show="line.excluded_reason" class="text-xs text-amber-800" x-text="line.excluded_reason"></p>
+                    <details x-show="line.breakdown" class="mt-1 text-xs text-slate-600">
+                      <summary class="cursor-pointer underline">Ver fracciones de la BOM</summary>
+                      <ul class="mt-1 list-disc pl-4">
+                        <template x-for="(part, i) in (line.breakdown || [])" :key="i">
+                          <li class="break-words"><span x-text="part.label"></span>: <span x-text="formatNumber(part.weight_kg)"></span> kg × <span x-text="formatNumber(part.factor_value)"></span> = <span x-text="formatNumber(part.co2_kg)"></span> kg CO₂e</li>
+                        </template>
+                      </ul>
+                    </details>
+                  </td>
+                  <td class="px-3 py-2 text-xs text-slate-600" x-text="line.mode_label"></td>
+                  <td class="px-3 py-2" x-text="formatNumber(line.weight_kg)"></td>
+                  <td class="px-3 py-2 text-xs text-slate-600" x-text="formatNumber(line.factor_value)"></td>
+                  <td class="px-3 py-2 font-semibold text-emerald-800" x-text="formatNumber(line.co2_kg)"></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </template>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function calculatorPanel() {
+    return {
+      options: { equipment: [], components: [], fractions: [] },
+      modes: [
+        { value: 'reuse', label: 'Reutilización / reacondicionamiento', short: 'Reutilización' },
+        { value: 'recycling', label: 'Reciclaje / valorización', short: 'Reciclaje' },
+        { value: 'no_recovery', label: 'Sin recuperación', short: 'Sin recuperación' }
+      ],
+      draft: { kind: 'equipment', id: null, quantity: 1, weight: '', mode: 'reuse' },
+      items: [],
+      result: null,
+      calculating: false,
+      error: '',
+
+      get currentOptions() {
+        // El tipo singular del formulario (component/fraction) usa las claves
+        // plurales del endpoint /api/catalog/options.
+        const key = { equipment: 'equipment', component: 'components', fraction: 'fractions' }[this.draft.kind];
+        return this.options[key] || [];
+      },
+
+      get modeCards() {
+        return [
+          { key: 'co2_reuse', label: 'Reutilización' },
+          { key: 'co2_recycling', label: 'Reciclaje / valorización' },
+          { key: 'co2_no_recovery', label: 'Sin recuperación' }
+        ];
+      },
+
+      // Lee el cuerpo una sola vez y valida que sea JSON antes de entregarlo.
+      // Así un body vacío o una página de error no se transforman en el críptico
+      // "Unexpected end of JSON input".
+      async readJson(response) {
+        const text = await response.text();
+        if (!text.trim()) {
+          throw new Error('El servidor devolvió una respuesta vacía (HTTP ' + response.status + ').');
+        }
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch (e) {
+          throw new Error('Respuesta no válida del servidor (HTTP ' + response.status + '): ' + text.slice(0, 120));
+        }
+        if (!response.ok) {
+          const detail = data && data.detail ? data.detail : ('Error HTTP ' + response.status);
+          const message = Array.isArray(detail)
+            ? detail.map(d => d.msg || String(d)).join('; ')
+            : String(detail);
+          throw new Error(message);
+        }
+        return data;
+      },
+
+      async load() {
+        try {
+          const response = await fetch('/api/catalog/options');
+          this.options = await this.readJson(response);
+          this.onKindChange();
+        } catch (e) {
+          this.error = e.message;
+        }
+      },
+
+      onKindChange() {
+        const options = this.currentOptions;
+        this.draft.id = options.length ? options[0].id : null;
+        if (this.draft.kind === 'fraction') this.draft.mode = 'recycling';
+      },
+
+      addItem() {
+        if (!this.draft.id) return;
+        const option = this.currentOptions.find(o => o.id === this.draft.id);
+        if (!option) return;
+        this.items.push({
+          kind: this.draft.kind,
+          id: this.draft.id,
+          label: option.label,
+          quantity: Number(this.draft.quantity) || 1,
+          weight: this.draft.weight === '' ? null : Number(this.draft.weight),
+          mode: this.draft.mode
+        });
+        this.error = '';
+      },
+
+      modeShort(value) {
+        const found = this.modes.find(m => m.value === value);
+        return found ? found.short : value;
+      },
+
+      formatNumber(value) {
+        return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 4 }).format(value || 0);
+      },
+
+      async calculatePreview() {
+        this.calculating = true;
+        this.error = '';
+        try {
+          const response = await fetch('/api/calculate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              items: this.items.map(item => ({
+                kind: item.kind,
+                id: item.id,
+                quantity: item.quantity,
+                weight_kg: item.weight,
+                mode: item.mode
+              }))
+            })
+          });
+          this.result = await this.readJson(response);
+        } catch (e) {
+          this.error = e.message;
+        } finally {
+          this.calculating = false;
+        }
+      }
+    };
+  }
+</script>
+{% endblock %}

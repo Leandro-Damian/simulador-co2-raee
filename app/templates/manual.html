@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block meta %}
+<meta name="author" content="Leandro Damian Chumbita">
+<meta name="description" content="Manual de Usuario del Simulador de CO₂ Evitado RAEE: catálogo, BOM, escenarios, factores, equivalencias y lectura en planta. Autoría: Leandro Damian Chumbita — Técnico Superior en Programación.">
+<meta name="rights" content="Leandro Damian Chumbita — Técnico Superior en Programación">
+{% endblock %}
+{% block title %}Manual de Usuario · {{ app_title }}{% endblock %}
+{% block page_title %}Manual de Usuario{% endblock %}
+
+{% block content %}
+<div class="min-w-0 space-y-6">
+  <section class="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+    <p class="text-sm leading-relaxed text-amber-900">
+      <strong>Estimación paramétrica.</strong> Todas las cifras de esta aplicación se calculan con
+      factores editables y sirven para orientar decisiones, no para constituir un inventario
+      oficial de emisiones.
+    </p>
+    <p class="mt-2 break-words text-sm leading-relaxed text-amber-900">
+      Organización configurada: <strong>{{ org_name }}</strong>.
+    </p>
+  </section>
+
+  <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <h2 class="text-lg font-semibold text-slate-900">Índice</h2>
+    <nav aria-label="Secciones del manual" class="mt-3 flex flex-wrap gap-2">
+      <a href="#inicio" class="nav-link rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700">1. Primeros pasos</a>
+      <a href="#catalogo" class="nav-link rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700">2. Catálogo, BOM y atributos</a>
+      <a href="#simulador" class="nav-link rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700">3. Simulación y guardado</a>
+      <a href="#calculadora" class="nav-link rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700">4. Calculadora rápida</a>
+      <a href="#factores" class="nav-link rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700">5. Factores y equivalencias</a>
+      <a href="#planta" class="nav-link rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700">6. Lectura en planta</a>
+    </nav>
+  </section>
+
+  <section id="inicio" class="scroll-mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <h2 class="text-lg font-semibold text-slate-900">1. Primeros pasos</h2>
+    <ol class="mt-3 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-slate-600">
+      <li>Ingresá a la aplicación desde <code class="rounded bg-slate-100 px-1">http://127.0.0.1:8002/</code>.</li>
+      <li>Usá el menú superior (o el botón <em>Menú</em> en el celular) para ir a <strong>Catálogo</strong>, <strong>Calculadora</strong>, <strong>Simulador</strong>, <strong>Factores</strong> o este <strong>Manual</strong>.</li>
+      <li>Antes de operar, revisá los factores vigentes en <a class="text-emerald-700 underline" href="/factores">Factores</a>: son la base de todas las estimaciones.</li>
+    </ol>
+  </section>
+
+  <section id="catalogo" class="scroll-mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <h2 class="text-lg font-semibold text-slate-900">2. Catálogo, BOM y atributos</h2>
+    <p class="mt-2 text-sm leading-relaxed text-slate-600">
+      En <a class="text-emerald-700 underline" href="/catalogo">Catálogo</a> se administran equipos,
+      componentes sueltos, fracciones materiales, marcas, categorías y atributos dinámicos.
+    </p>
+    <div class="mt-4 grid gap-4 md:grid-cols-2">
+      <div class="min-w-0 rounded-xl bg-slate-50 p-4">
+        <h3 class="font-semibold text-slate-800">Cargar un equipo con su BOM</h3>
+        <p class="mt-1 break-words text-sm leading-relaxed text-slate-600">
+          Abrí <em>Modelos de equipo</em> y elegí <em>Nuevo modelo</em>. Completá nombre, marca y peso.
+          En la lista de componentes agregá cada pieza indicando fracción, peso unitario y cantidad;
+          esa combinación es la lista de materiales (BOM). El peso total del equipo se obtiene de la
+          suma de la BOM cuando se indica.
+        </p>
+      </div>
+      <div class="min-w-0 rounded-xl bg-slate-50 p-4">
+        <h3 class="font-semibold text-slate-800">Componentes sueltos</h3>
+        <p class="mt-1 break-words text-sm leading-relaxed text-slate-600">
+          Para piezas que no pertenecen a un equipo (por ejemplo un cable suelto), cargalas desde
+          <em>Componentes sueltos</em>. También podés asignarles atributos como conector, capacidad o
+          estado, según las definiciones disponibles.
+        </p>
+      </div>
+      <div class="min-w-0 rounded-xl bg-slate-50 p-4">
+        <h3 class="font-semibold text-slate-800">Fracciones y materiales</h3>
+        <p class="mt-1 break-words text-sm leading-relaxed text-slate-600">
+          Las fracciones clasifican el peso por material: cobre, aluminio, plásticos, vidrio,
+          hierro/acero, baterías de litio, placas PCB y metales preciosos, entre otras. Cada una
+          puede asociarse a un factor editable. Podés <em>agregar</em> fracciones nuevas y
+          <em>desactivar</em> las que no usés: el botón ✕ las da de baja sin borrarlas, y el botón ↺
+          las reactiva. Los componentes y escenarios que ya las usaban siguen calculando igual.
+        </p>
+      </div>
+      <div class="min-w-0 rounded-xl bg-slate-50 p-4">
+        <h3 class="font-semibold text-slate-800">Atributos dinámicos</h3>
+        <p class="mt-1 break-words text-sm leading-relaxed text-slate-600">
+          En <em>Atributos</em> definí campos extra (por ejemplo “Tipo de conector”, “Capacidad”,
+          “Estado”) y sus opciones. Luego cargá los valores en cada equipo o componente. Así el
+          catálogo se adapta a tu procedimiento de recepción sin cambiar el código.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="simulador" class="scroll-mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <h2 class="text-lg font-semibold text-slate-900">3. Simulación y guardado</h2>
+    <p class="mt-2 text-sm leading-relaxed text-slate-600">
+      El <a class="text-emerald-700 underline" href="/simulador">Simulador</a> permite armar lotes de
+      trabajo comparables y guardarlos como escenarios.
+    </p>
+    <ol class="mt-3 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-slate-600">
+      <li>Presioná <em>Nuevo escenario</em> y poné un nombre, un modo por defecto y, si querés, notas.</li>
+      <li>Agregá ítems de tres formas: un <strong>equipo</strong> del catálogo, un <strong>componente suelto</strong> o una <strong>fracción por peso</strong>.</li>
+      <li>Ajustá cantidad, peso (cuando corresponde) y modo: reutilización, reciclaje o sin recuperación.</li>
+      <li>Presioná <em>Calcular</em> para ver el total, el desglose por ítem y los gráficos comparativos por modo.</li>
+      <li>Presioná <em>Guardar escenario</em> para conservarlo. Podés volver a abrirlo, editarlo, recalcularlo o borrarlo desde la lista.</li>
+    </ol>
+    <p class="mt-3 break-words rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900">
+      Los escenarios guardan el nombre de cada entidad al momento del cálculo: si después desactivás
+      una fracción o un factor, el escenario histórico sigue siendo legible y calculable.
+    </p>
+  </section>
+
+  <section id="calculadora" class="scroll-mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <h2 class="text-lg font-semibold text-slate-900">4. Calculadora rápida</h2>
+    <p class="mt-2 break-words text-sm leading-relaxed text-slate-600">
+      La <a class="text-emerald-700 underline" href="/calculadora">Calculadora</a> es una herramienta
+      de uso puntual: elegí tipo de ítem (equipo, componente o fracción), cantidad, peso y modo,
+      agregalo a la lista y presioná <em>Calcular estimación</em>. Muestra el total, el desglose y
+      equivalencias en unidades cotidianas. No guarda nada: para conservar el trabajo usá el
+      Simulador.
+    </p>
+  </section>
+
+  <section id="factores" class="scroll-mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <h2 class="text-lg font-semibold text-slate-900">5. Factores y equivalencias</h2>
+    <p class="mt-2 text-sm leading-relaxed text-slate-600">
+      En <a class="text-emerald-700 underline" href="/factores">Factores</a> se editan todos los
+      parámetros del motor de cálculo.
+    </p>
+    <div class="mt-4 grid gap-4 md:grid-cols-2">
+      <div class="min-w-0 rounded-xl bg-slate-50 p-4">
+        <h3 class="font-semibold text-slate-800">Factores</h3>
+        <p class="mt-1 break-words text-sm leading-relaxed text-slate-600">
+          Cada factor tiene clave, etiqueta, valor, unidad, modo (reutilización, reciclaje, sin
+          recuperación, material o equivalencia), fuente y nota. Podés crear nuevos, editarlos y
+          desactivarlos; el botón ↺ los reactiva sin cambiar el valor que ajustaste. Los cambios
+          impactan de inmediato en nuevas estimaciones.
+        </p>
+      </div>
+      <div class="min-w-0 rounded-xl bg-slate-50 p-4">
+        <h3 class="font-semibold text-slate-800">Equivalencias</h3>
+        <p class="mt-1 break-words text-sm leading-relaxed text-slate-600">
+          Las equivalencias traducen kg CO₂e a kilómetros en auto, cargas de teléfono o días de
+          absorción de un árbol. Se editan en la pestaña <em>Equivalencias</em> del mismo panel y se
+          muestran al final de cada cálculo para facilitar la comunicación del resultado.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="planta" class="scroll-mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <h2 class="text-lg font-semibold text-slate-900">6. Lectura ante clientes o recorridos en planta</h2>
+    <p class="mt-2 break-words text-sm leading-relaxed text-slate-600">
+      Para una visita o una reunión rápida, seguí este recorrido sugerido:
+    </p>
+    <ol class="mt-3 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-slate-600">
+      <li>Abrí <strong>Calculadora</strong> en el celular: agregá el equipo que se está recepcionando y mostrá el total con sus equivalencias.</li>
+      <li>Si el cliente pregunta por el origen del número, abrí <strong>Factores</strong> y mostrá el factor aplicado, su unidad y su nota.</li>
+      <li>Si necesitás comparar destinos, abrí un escenario en <strong>Simulador</strong> y mostrá los gráficos por modo de recuperación.</li>
+      <li>Recordá siempre la aclaración: son <strong>estimaciones paramétricas</strong>, no un inventario oficial.</li>
+    </ol>
+    <p class="mt-3 break-words text-sm text-slate-600">
+    En un recorrido de planta podés usar el menú <em>Menú</em> del encabezado para cambiar de vista
+      sin volver al inicio. La interfaz se adapta al ancho del celular o de la pantalla de la sala.
+    </p>
+  </section>
+
+  <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <h2 class="text-lg font-semibold text-slate-900">Documentación relacionada</h2>
+    <p class="mt-2 break-words text-sm leading-relaxed text-slate-600">
+      <code class="rounded bg-slate-100 px-1">README.md</code> explica la instalación desde
+      <code class="rounded bg-slate-100 px-1">git clone</code> y
+      <code class="rounded bg-slate-100 px-1">docs/MANUAL_USUARIO.md</code> contiene este mismo
+      contenido en formato Markdown, imprimible o compartible por correo.
+    </p>
+  </section>
+</div>
+{% endblock %}
